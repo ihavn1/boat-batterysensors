@@ -12,11 +12,9 @@ using namespace sensesp;
 // Globals
 INA226 INA0(0x40);
 
-float foo1() { return 1.0;}
-float foo2() { return 2.0;}
 // put function declarations here:
-float read_busVoltage_callback() {return (foo1()); }
-float read_current_callback() { return (foo2()); }
+float read_busVoltage_callback() {return INA0.getBusVoltage(); }
+float read_current_callback() { return INA0.getCurrent(); }
 
 void setup()
 {
@@ -34,7 +32,7 @@ void setup()
   // Read the sensor every 2 seconds
   unsigned int read_interval = 2000;
 
-  /*
+  
   if (!INA0.begin())
   {
     Serial.println("Failed to find INA226_0 Chip!");
@@ -46,19 +44,30 @@ void setup()
  
   INA0.setMaxCurrentShunt(10.0, 0.1);
   INA0.configure();
-     */
-
+  
   // Create a RepeatSensor with float output that reads the current of INA0
   // using the function defined above.
   auto *battery_start_busVoltage =
       new RepeatSensor<float>(read_interval, read_busVoltage_callback);
 
   // Set the Signal K Path for the output
-  const char *sk_path = "electrical.batteries.houseBattery.voltage";
+  const char *sk_path_busVoltage = "electrical.batteries.houseBattery.busVoltage";
 
   // Send the busVolate to the Signal K server as a Float
   battery_start_busVoltage->connect_to(
-      new SKOutputFloat(sk_path, "", new SKMetadata("V", "Voltage")));
+      new SKOutputFloat(sk_path_busVoltage, "", new SKMetadata("V", "Voltage")));
+
+  // Create a RepeatSensor with float output that reads the cuttent of INA0
+  // using the function defined above.
+  auto *battery_start_current =
+      new RepeatSensor<float>(read_interval, read_current_callback);
+
+  // Set the Signal K Path for the output
+  const char *sk_path_current = "electrical.batteries.houseBattery.current";
+
+  // Send the busVolate to the Signal K server as a Float
+  battery_start_current->connect_to(
+      new SKOutputFloat(sk_path_current, "", new SKMetadata("A", "Amps")));      
 }
 
 void loop()
