@@ -39,22 +39,22 @@ void setup()
 
     Wire.begin();
 
-    // Read the sensor every 2 seconds
+    // Read the sensor every BATTERY_READ_INTERVAL_MS
     const unsigned int read_interval = BATTERY_READ_INTERVAL_MS;
 
     // -------------- House Battery Voltage and current -----------------------
-    setupBatteryINA(HouseBatteryINA, read_interval, "electrical.batteries.house.voltage",
-                    "electrical.batteries.house.current", "HouseBatteryINA");
+    setupBatteryINA(HouseBatteryINA, read_interval, 0.0075F, 0.250F, "electrical.batteries.house.voltage",
+                    "electrical.batteries.house.current", "electrical.batteries.house.power", "HouseBatteryINA");
 
     // -------------- Starter Battery Voltage and current -----------------------
-    setupBatteryINA(StarterBatteryINA, read_interval, "electrical.batteries.starter.voltage",
-                    "electrical.batteries.starter.current", "StarterBatteryINA");
+    setupBatteryINA(StarterBatteryINA, read_interval, 0.0075F, 0.250F, "electrical.batteries.starter.voltage",
+                    "electrical.batteries.starter.current", "electrical.batteries.starter.power", "StarterBatteryINA");
 
     // ############ Battery temperature sensors ##########
     constexpr uint8_t pin = ONEWIRE_PIN;
     sensesp::onewire::DallasTemperatureSensors *dts = new sensesp::onewire::DallasTemperatureSensors(pin);
 
-    // Define how often SensESP should read the sensor(s) in milliseconds
+    // Read the sensor every TEMPERATURE_READ_DELAY_MS
     const unsigned int temperature_read_delay = TEMPERATURE_READ_DELAY_MS;
 
     // Below are temperatures sampled and sent to Signal K server
@@ -62,7 +62,6 @@ void setup()
     // https://signalk.org/specification/1.4.0/doc/vesselsBranch.html
 
     // Measure house battery temperature
-    // Measure coolant temperature
     add_onewire_temp(dts, temperature_read_delay, "houseBatteryTemperature",
                      "electrical.batteries.house.temperature",
                      "House Battery Temperature", 110, 120, 130);
