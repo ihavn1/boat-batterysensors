@@ -49,7 +49,7 @@ void setupBatteryINA(INA226& ina, unsigned int read_interval, float shunt_resist
         output_ = new SKOutputFloat(soc_path, "", new SKMetadata("ratio", "State of Charge"));
       }
       void set(const float& ah) override {
-        float capacity = integ_->get_capacity_ah();
+        float capacity = integ_->get_current_capacity_ah();
         float soc = (capacity > 0.0f) ? (ah / capacity) * 100.0f : 0.0f;
         // Clamp to 0-100%
         soc = constrain(soc, 0.0f, 100.0f);
