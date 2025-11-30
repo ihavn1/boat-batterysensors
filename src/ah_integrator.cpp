@@ -1,12 +1,31 @@
 #include "ah_integrator.h"
 #include <Arduino.h>
+#include <Preferences.h>
 
 namespace sensesp {
 
 AmpHourIntegrator::AmpHourIntegrator(const String& config_path, float initial_ah, float battery_capacity_ah)
-    : FloatTransform(config_path), battery_capacity_ah_(battery_capacity_ah) {
+    : FloatTransform(config_path), marked_capacity_ah_(battery_capacity_ah),
+      battery_capacity_ah_(battery_capacity_ah), config_path_(config_path) {
   this->output_ = initial_ah;
   last_update_ms_ = millis();
+
+  // Load persisted capacities if available
+  if (config_path_.length() > 0) {
+    String key = config_path_;
+    key.replace('/', '_');
+    Preferences prefs;
+    if (prefs.begin("battcfg", true)) {  // read-only to check keys
+      if (prefs.isKey((key + "_marked").c_str())) {
+        marked_capacity_ah_ = prefs.getFloat((key + "_marked").c_str(), marked_capacity_ah_);
+      }
+      if (prefs.isKey((key + "_current").c_str())) {
+        battery_capacity_ah_ = prefs.getFloat((key + "_current").c_str(), battery_capacity_ah_);
+      }
+      prefs.end();
+    }
+  }
+
   // Start a 100 Hz timer for internal integration
   // This ensures high-resolution time sampling even if Signal K updates slower
   event_loop()->onRepeat(10, [this]() { this->integrate(); });
@@ -23,6 +42,34 @@ void AmpHourIntegrator::set_ah(float ah) {
     this->output_ = constrain(ah, 0.0f, battery_capacity_ah_);
   } else {
     this->output_ = ah;
+  }
+}
+
+void AmpHourIntegrator::set_marked_capacity_ah(float capacity_ah) {
+  marked_capacity_ah_ = constrain(capacity_ah, 0.1f, 10000.0f);
+  // Persist
+  if (config_path_.length() > 0) {
+    String key = config_path_;
+    key.replace('/', '_');
+    Preferences prefs;
+    if (prefs.begin("battcfg", false)) {
+      prefs.putFloat((key + "_marked").c_str(), marked_capacity_ah_);
+      prefs.end();
+    }
+  }
+}
+
+void AmpHourIntegrator::set_current_capacity_ah(float capacity_ah) {
+  battery_capacity_ah_ = constrain(capacity_ah, 0.1f, 10000.0f);
+  // Persist
+  if (config_path_.length() > 0) {
+    String key = config_path_;
+    key.replace('/', '_');
+    Preferences prefs;
+    if (prefs.begin("battcfg", false)) {
+      prefs.putFloat((key + "_current").c_str(), battery_capacity_ah_);
+      prefs.end();
+    }
   }
 }
 

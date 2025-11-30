@@ -33,11 +33,11 @@ class AmpHourIntegrator : public FloatTransform {
   
   // Get/set marked (nameplate) capacity in Ah - the rated capacity
   float get_marked_capacity_ah() const { return marked_capacity_ah_; }
-  void set_marked_capacity_ah(float capacity_ah) { marked_capacity_ah_ = constrain(capacity_ah, 0.1f, 10000.0f); }
-  
+  void set_marked_capacity_ah(float capacity_ah);
+
   // Get/set current capacity in Ah - actual usable capacity (may degrade)
   float get_current_capacity_ah() const { return battery_capacity_ah_; }
-  void set_current_capacity_ah(float capacity_ah) { battery_capacity_ah_ = constrain(capacity_ah, 0.1f, 10000.0f); }
+  void set_current_capacity_ah(float capacity_ah);
 
  private:
   void integrate();  // Called by internal 100 Hz timer
@@ -47,6 +47,8 @@ class AmpHourIntegrator : public FloatTransform {
   float discharge_efficiency_ = 100.0f; // Efficiency % when discharging (current < 0)
   float marked_capacity_ah_ = 0.0f;     // Marked/nameplate capacity in Ah
   float battery_capacity_ah_ = 0.0f;    // Current capacity in Ah (used for clamping)
+  // Config path used to create unique NVS keys for persistence
+  String config_path_;
 };
 
 }  // namespace sensesp

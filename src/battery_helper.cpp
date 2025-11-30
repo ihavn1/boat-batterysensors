@@ -33,7 +33,8 @@ void setupBatteryINA(INA226& ina, unsigned int read_interval, float shunt_resist
     // Amp-hour integrator: integrate current over time at 100 Hz to produce Ah
     // Pass battery capacity so Ah is clamped between 0 and capacity
     // Initial Ah is set to initial_ah (typically full capacity at startup)
-    auto* ah_integ = new AmpHourIntegrator("", initial_ah, battery_capacity_ah);
+    // Pass the Ah Signal K path as config_path so persistence keys are unique per battery
+    auto* ah_integ = new AmpHourIntegrator(String(ah_path), initial_ah, battery_capacity_ah);
     current_sensor->connect_to(ah_integ);
     
     // Sample Ah from integrator at 1 Hz for Signal K output (decoupled from 100 Hz integration)
