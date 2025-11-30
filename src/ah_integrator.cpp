@@ -11,8 +11,7 @@ AmpHourIntegrator::AmpHourIntegrator(const String& config_path, float initial_ah
   this->output_ = initial_ah;
   last_update_ms_ = millis();
 
-  Serial.printf("[AmpHourIntegrator] Constructor called with config_path='%s', initial_ah=%.2f, capacity=%.2f\n",
-                config_path_.c_str(), initial_ah, battery_capacity_ah);
+  (void)config_path_; (void)initial_ah; (void)battery_capacity_ah;
 
   // Load persisted capacities and efficiencies if available
   if (config_path_.length() > 0) {
@@ -22,43 +21,28 @@ AmpHourIntegrator::AmpHourIntegrator(const String& config_path, float initial_ah
     if (prefs.begin("battcfg", false)) {  // open read-write to be safe
       if (prefs.isKey((key + "_marked").c_str())) {
         float v = prefs.getFloat((key + "_marked").c_str(), marked_capacity_ah_);
-        Serial.printf("[AmpHourIntegrator] Loaded %s_marked = %.2f\n", key.c_str(), v);
         marked_capacity_ah_ = v;
-      } else {
-        Serial.printf("[AmpHourIntegrator] No persisted %s_marked, using %.2f\n", key.c_str(), marked_capacity_ah_);
       }
       if (prefs.isKey((key + "_current").c_str())) {
         float v = prefs.getFloat((key + "_current").c_str(), battery_capacity_ah_);
-        Serial.printf("[AmpHourIntegrator] Loaded %s_current = %.2f\n", key.c_str(), v);
         battery_capacity_ah_ = v;
-      } else {
-        Serial.printf("[AmpHourIntegrator] No persisted %s_current, using %.2f\n", key.c_str(), battery_capacity_ah_);
       }
       if (prefs.isKey((key + "_charge").c_str())) {
         float v = prefs.getFloat((key + "_charge").c_str(), charge_efficiency_);
-        Serial.printf("[AmpHourIntegrator] Loaded %s_charge = %.2f\n", key.c_str(), v);
         charge_efficiency_ = v;
-      } else {
-        Serial.printf("[AmpHourIntegrator] No persisted %s_charge, using %.2f\n", key.c_str(), charge_efficiency_);
       }
       if (prefs.isKey((key + "_discharge").c_str())) {
         float v = prefs.getFloat((key + "_discharge").c_str(), discharge_efficiency_);
-        Serial.printf("[AmpHourIntegrator] Loaded %s_discharge = %.2f\n", key.c_str(), v);
         discharge_efficiency_ = v;
-      } else {
-        Serial.printf("[AmpHourIntegrator] No persisted %s_discharge, using %.2f\n", key.c_str(), discharge_efficiency_);
       }
       // Load persisted Ah value if present
       if (prefs.isKey((key + "_ah").c_str())) {
         float v = prefs.getFloat((key + "_ah").c_str(), this->output_);
-        Serial.printf("[AmpHourIntegrator] Loaded %s_ah = %.6f\n", key.c_str(), v);
         this->output_ = v;
-      } else {
-        Serial.printf("[AmpHourIntegrator] No persisted %s_ah, using %.6f\n", key.c_str(), this->output_);
       }
       prefs.end();
     } else {
-      Serial.printf("[AmpHourIntegrator] Failed to open Preferences namespace battcfg for %s\n", key.c_str());
+      (void)key;
     }
   }
 
@@ -104,20 +88,15 @@ void AmpHourIntegrator::maybe_persist_ah() {
   String key = config_path_;
   key.replace('/', '_');
   Preferences prefs;
-  if (prefs.begin("battcfg", false)) {
-    bool ok = prefs.putFloat((key + "_ah").c_str(), this->output_);
-    if (ok) {
-      Serial.printf("[AmpHourIntegrator] Persisted %s_ah = %.6f\n", key.c_str(), this->output_);
+    if (prefs.begin("battcfg", false)) {
+      prefs.putFloat((key + "_ah").c_str(), this->output_);
       last_persisted_ah_ = this->output_;
       last_ah_persist_ms_ = now;
       ah_dirty_ = false;
+      prefs.end();
     } else {
-      Serial.printf("[AmpHourIntegrator] Failed to persist %s_ah (putFloat returned false)\n", key.c_str());
+      (void)key;
     }
-    prefs.end();
-  } else {
-    Serial.printf("[AmpHourIntegrator] Failed to open Preferences namespace battcfg to persist %s_ah\n", key.c_str());
-  }
 }
 
 void AmpHourIntegrator::set_marked_capacity_ah(float capacity_ah) {
@@ -129,7 +108,6 @@ void AmpHourIntegrator::set_marked_capacity_ah(float capacity_ah) {
     Preferences prefs;
     if (prefs.begin("battcfg", false)) {
       prefs.putFloat((key + "_marked").c_str(), marked_capacity_ah_);
-      Serial.printf("[AmpHourIntegrator] Persisted %s_marked = %.2f\n", key.c_str(), marked_capacity_ah_);
       prefs.end();
     }
   }
@@ -144,7 +122,6 @@ void AmpHourIntegrator::set_current_capacity_ah(float capacity_ah) {
     Preferences prefs;
     if (prefs.begin("battcfg", false)) {
       prefs.putFloat((key + "_current").c_str(), battery_capacity_ah_);
-      Serial.printf("[AmpHourIntegrator] Persisted %s_current = %.2f\n", key.c_str(), battery_capacity_ah_);
       prefs.end();
     }
   }
@@ -158,7 +135,6 @@ void AmpHourIntegrator::set_charge_efficiency(float pct) {
     Preferences prefs;
     if (prefs.begin("battcfg", false)) {
       prefs.putFloat((key + "_charge").c_str(), charge_efficiency_);
-      Serial.printf("[AmpHourIntegrator] Persisted %s_charge = %.2f\n", key.c_str(), charge_efficiency_);
       prefs.end();
     }
   }
@@ -172,7 +148,6 @@ void AmpHourIntegrator::set_discharge_efficiency(float pct) {
     Preferences prefs;
     if (prefs.begin("battcfg", false)) {
       prefs.putFloat((key + "_discharge").c_str(), discharge_efficiency_);
-      Serial.printf("[AmpHourIntegrator] Persisted %s_discharge = %.2f\n", key.c_str(), discharge_efficiency_);
       prefs.end();
     }
   }
@@ -202,8 +177,7 @@ void AmpHourIntegrator::integrate() {
   }
 
   // Lightweight debug output (can be disabled in production)
-  Serial.printf("[AmpHourIntegrator] cur=%.3f A eff=%.1f%% dt=%lu ms dAh=%.6f Ah total=%.6f Ah\n",
-                current_a_, (current_a_ > 0) ? charge_efficiency_ : discharge_efficiency_, dt_ms, delta_ah, this->output_);
+  (void)current_a_; (void)charge_efficiency_; (void)discharge_efficiency_; (void)dt_ms; (void)delta_ah; (void)this->output_;
 
   // Do NOT emit here; let Signal K output sample Ah at 1 Hz instead
   // This decouples high-precision integration (100 Hz) from Signal K updates (1 Hz)
