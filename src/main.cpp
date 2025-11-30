@@ -19,6 +19,10 @@ static constexpr uint8_t ONEWIRE_PIN = 25;
 static constexpr unsigned int TEMPERATURE_READ_DELAY_MS = 2000;
 static constexpr unsigned int BATTERY_READ_INTERVAL_MS = 1000;
 
+// Battery capacity constants (in Ah)
+static constexpr float HOUSE_BATTERY_CAPACITY_AH = 200.0f;  // House battery 200 Ah
+static constexpr float STARTER_BATTERY_CAPACITY_AH = 110.0f; // Starter battery 110 Ah
+
 // Globals
 static INA226 HouseBatteryINA(0x40);
 static INA226 StarterBatteryINA(0x41);
@@ -44,11 +48,13 @@ void setup()
 
     // -------------- House Battery Voltage and current -----------------------
     setupBatteryINA(HouseBatteryINA, read_interval, 0.0075F, 0.250F, "electrical.batteries.house.voltage",
-                    "electrical.batteries.house.current", "electrical.batteries.house.power", "HouseBatteryINA");
+                    "electrical.batteries.house.current", "electrical.batteries.house.power", "electrical.batteries.house.ah", 
+                    "electrical.batteries.house.stateOfCharge", HOUSE_BATTERY_CAPACITY_AH, HOUSE_BATTERY_CAPACITY_AH, "HouseBatteryINA");
 
     // -------------- Starter Battery Voltage and current -----------------------
     setupBatteryINA(StarterBatteryINA, read_interval, 0.0075F, 0.250F, "electrical.batteries.starter.voltage",
-                    "electrical.batteries.starter.current", "electrical.batteries.starter.power", "StarterBatteryINA");
+                    "electrical.batteries.starter.current", "electrical.batteries.starter.power", "electrical.batteries.starter.ah", 
+                    "electrical.batteries.starter.stateOfCharge", STARTER_BATTERY_CAPACITY_AH, STARTER_BATTERY_CAPACITY_AH, "StarterBatteryINA");
 
     // ############ Battery temperature sensors ##########
     constexpr uint8_t pin = ONEWIRE_PIN;
