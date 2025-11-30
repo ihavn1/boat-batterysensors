@@ -33,9 +33,11 @@ void setupBatteryINA(INA226& ina, unsigned int read_interval, float shunt_resist
     // Amp-hour integrator: integrate current over time at 100 Hz to produce Ah
     // Pass battery capacity so Ah is clamped between 0 and capacity
     // Initial Ah is set to initial_ah (typically full capacity at startup)
-    // Pass the Ah Signal K path as config_path so persistence keys are unique per battery
-    auto* ah_integ = new AmpHourIntegrator(String(ah_path), initial_ah, battery_capacity_ah);
+    // Use a short config key (chip_name) for NVS persistence so keys stay within NVS limits
+    auto* ah_integ = new AmpHourIntegrator(String(chip_name), initial_ah, battery_capacity_ah);
+    Serial.printf("[battery_helper] Created AmpHourIntegrator for %s (ptr=%p) initial_ah=%.2f capacity=%.2f\n", chip_name, ah_integ, initial_ah, battery_capacity_ah);
     current_sensor->connect_to(ah_integ);
+    Serial.printf("[battery_helper] Connected current_sensor to AmpHourIntegrator for %s\n", chip_name);
     
     // Sample Ah from integrator at 1 Hz for Signal K output (decoupled from 100 Hz integration)
     auto* ah_sk_sampler = new RepeatSensor<float>(1000, [ah_integ]() { return ah_integ->get_ah(); });
@@ -86,7 +88,10 @@ void setupBatteryINA(INA226& ina, unsigned int read_interval, float shunt_resist
     class CurrentCapacityConsumer : public ValueConsumer<float> {
      public:
       CurrentCapacityConsumer(AmpHourIntegrator* integ) : integ_(integ) {}
-      void set(const float& new_value) override { integ_->set_current_capacity_ah(new_value); }
+      void set(const float& new_value) override {
+        Serial.printf("[battery_helper] Received PUT for current capacity: %.2f -> forwarding to integrator\n", new_value);
+        integ_->set_current_capacity_ah(new_value);
+      }
      private:
       AmpHourIntegrator* integ_;
     };
@@ -94,7 +99,10 @@ void setupBatteryINA(INA226& ina, unsigned int read_interval, float shunt_resist
     class MarkedCapacityConsumer : public ValueConsumer<float> {
      public:
       MarkedCapacityConsumer(AmpHourIntegrator* integ) : integ_(integ) {}
-      void set(const float& new_value) override { integ_->set_marked_capacity_ah(new_value); }
+      void set(const float& new_value) override {
+        Serial.printf("[battery_helper] Received PUT for marked capacity: %.2f -> forwarding to integrator\n", new_value);
+        integ_->set_marked_capacity_ah(new_value);
+      }
      private:
       AmpHourIntegrator* integ_;
     };
@@ -102,7 +110,10 @@ void setupBatteryINA(INA226& ina, unsigned int read_interval, float shunt_resist
     class ChargeEfficiencyConsumer : public ValueConsumer<float> {
      public:
       ChargeEfficiencyConsumer(AmpHourIntegrator* integ) : integ_(integ) {}
-      void set(const float& new_value) override { integ_->set_charge_efficiency(new_value); }
+      void set(const float& new_value) override {
+        Serial.printf("[battery_helper] Received PUT for charge efficiency: %.2f -> forwarding to integrator\n", new_value);
+        integ_->set_charge_efficiency(new_value);
+      }
      private:
       AmpHourIntegrator* integ_;
     };
@@ -110,7 +121,10 @@ void setupBatteryINA(INA226& ina, unsigned int read_interval, float shunt_resist
     class DischargeEfficiencyConsumer : public ValueConsumer<float> {
      public:
       DischargeEfficiencyConsumer(AmpHourIntegrator* integ) : integ_(integ) {}
-      void set(const float& new_value) override { integ_->set_discharge_efficiency(new_value); }
+      void set(const float& new_value) override {
+        Serial.printf("[battery_helper] Received PUT for discharge efficiency: %.2f -> forwarding to integrator\n", new_value);
+        integ_->set_discharge_efficiency(new_value);
+      }
      private:
       AmpHourIntegrator* integ_;
     };

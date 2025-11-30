@@ -49,12 +49,12 @@ void setup()
     // -------------- House Battery Voltage and current -----------------------
     setupBatteryINA(HouseBatteryINA, read_interval, 0.0075F, 0.250F, "electrical.batteries.house.voltage",
                     "electrical.batteries.house.current", "electrical.batteries.house.power", "electrical.batteries.house.ah", 
-                    "electrical.batteries.house.stateOfCharge", HOUSE_BATTERY_CAPACITY_AH, HOUSE_BATTERY_CAPACITY_AH, "HouseBatteryINA");
+                    "electrical.batteries.house.stateOfCharge", HOUSE_BATTERY_CAPACITY_AH, HOUSE_BATTERY_CAPACITY_AH, "house");
 
     // -------------- Starter Battery Voltage and current -----------------------
     setupBatteryINA(StarterBatteryINA, read_interval, 0.0075F, 0.250F, "electrical.batteries.starter.voltage",
                     "electrical.batteries.starter.current", "electrical.batteries.starter.power", "electrical.batteries.starter.ah", 
-                    "electrical.batteries.starter.stateOfCharge", STARTER_BATTERY_CAPACITY_AH, STARTER_BATTERY_CAPACITY_AH, "StarterBatteryINA");
+                    "electrical.batteries.starter.stateOfCharge", STARTER_BATTERY_CAPACITY_AH, STARTER_BATTERY_CAPACITY_AH, "start");
 
     // ############ Battery temperature sensors ##########
     constexpr uint8_t pin = ONEWIRE_PIN;

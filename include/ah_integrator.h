@@ -25,11 +25,11 @@ class AmpHourIntegrator : public FloatTransform {
   
   // Get/set efficiency for charging (current > 0), range 0-100%
   float get_charge_efficiency() const { return charge_efficiency_; }
-  void set_charge_efficiency(float pct) { charge_efficiency_ = constrain(pct, 0.0f, 100.0f); }
+  void set_charge_efficiency(float pct);
   
   // Get/set efficiency for discharging (current < 0), range 0-100%
   float get_discharge_efficiency() const { return discharge_efficiency_; }
-  void set_discharge_efficiency(float pct) { discharge_efficiency_ = constrain(pct, 0.0f, 100.0f); }
+  void set_discharge_efficiency(float pct);
   
   // Get/set marked (nameplate) capacity in Ah - the rated capacity
   float get_marked_capacity_ah() const { return marked_capacity_ah_; }
@@ -49,6 +49,13 @@ class AmpHourIntegrator : public FloatTransform {
   float battery_capacity_ah_ = 0.0f;    // Current capacity in Ah (used for clamping)
   // Config path used to create unique NVS keys for persistence
   String config_path_;
+  // Ah persistence helpers
+  bool ah_dirty_ = false;                    // Whether Ah has changed since last persisted
+  unsigned long last_ah_persist_ms_ = 0;     // Timestamp of last Ah persist
+  float last_persisted_ah_ = 0.0f;           // Last persisted Ah value
+  unsigned long ah_persist_interval_ms_ = 600000; // Default persist interval (10 minutes)
+  float ah_persist_delta_ = 0.5f;            // Minimum Ah delta to trigger persist
+  void maybe_persist_ah();                   // Called periodically to flush Ah to NVS
 };
 
 }  // namespace sensesp
