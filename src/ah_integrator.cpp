@@ -67,6 +67,20 @@ void AmpHourIntegrator::set_ah(float ah) {
   }
   // Mark Ah dirty for periodic persistence (avoid frequent NVS writes)
   ah_dirty_ = true;
+
+  // Also persist immediately because this value was explicitly set via SK PUT
+  if (config_path_.length() > 0) {
+    String key = config_path_;
+    key.replace('/', '_');
+    Preferences prefs;
+    if (prefs.begin("battcfg", false)) {
+      prefs.putFloat((key + "_ah").c_str(), this->output_);
+      last_persisted_ah_ = this->output_;
+      last_ah_persist_ms_ = millis();
+      ah_dirty_ = false; // already persisted
+      prefs.end();
+    }
+  }
 }
 
 void AmpHourIntegrator::maybe_persist_ah() {
