@@ -48,13 +48,30 @@ void setupBatteryINA(INA226& ina, unsigned int read_interval, float shunt_resist
     
     // Signal K input to allow remote reset/calibration of Ah value
     auto* ah_sk_input = new SKPutRequestListener<float>(ah_path);
-    ah_sk_input->connect_to(ah_integ);  // Connect to integrator's set() method
+    ah_sk_input->connect_to(ah_integ);  // Connect to integrator's set_ah() method
     
     // Signal K inputs for charge/discharge efficiency configuration
     String charge_eff_path = String(ah_path) + "/chargeEfficiency";
     String discharge_eff_path = String(ah_path) + "/dischargeEfficiency";
+    String capacity_path = String(ah_path) + "/capacity";
     
-    // Create simple consumers that call the efficiency setters
+    // Create simple consumers that call the efficiency/ah/capacity setters
+    class AhConsumer : public ValueConsumer<float> {
+     public:
+      AhConsumer(AmpHourIntegrator* integ) : integ_(integ) {}
+      void set(const float& new_value) override { integ_->set_ah(new_value); }
+     private:
+      AmpHourIntegrator* integ_;
+    };
+    
+    class CapacityConsumer : public ValueConsumer<float> {
+     public:
+      CapacityConsumer(AmpHourIntegrator* integ) : integ_(integ) {}
+      void set(const float& new_value) override { integ_->set_capacity_ah(new_value); }
+     private:
+      AmpHourIntegrator* integ_;
+    };
+    
     class ChargeEfficiencyConsumer : public ValueConsumer<float> {
      public:
       ChargeEfficiencyConsumer(AmpHourIntegrator* integ) : integ_(integ) {}
@@ -71,13 +88,23 @@ void setupBatteryINA(INA226& ina, unsigned int read_interval, float shunt_resist
       AmpHourIntegrator* integ_;
     };
     
+    // Re-wire Ah input to use the AhConsumer for proper clamping
+    ah_sk_input->connect_to(new AhConsumer(ah_integ));
+    
     auto* charge_eff_input = new SKPutRequestListener<float>(charge_eff_path);
     charge_eff_input->connect_to(new ChargeEfficiencyConsumer(ah_integ));
     
     auto* discharge_eff_input = new SKPutRequestListener<float>(discharge_eff_path);
     discharge_eff_input->connect_to(new DischargeEfficiencyConsumer(ah_integ));
+    
+    auto* capacity_input = new SKPutRequestListener<float>(capacity_path);
+    capacity_input->connect_to(new CapacityConsumer(ah_integ));
 
     auto* power_sensor = new RepeatSensor<float>(read_interval, [&ina]() { return ina.getPower(); });
     power_sensor->connect_to(
-        new SKOutputFloat(power_path, "", new SKMetadata("W", "Power")));        
+        new SKOutputFloat(power_path, "", new SKMetadata("W", "Power")));
+    
+    // Expose battery capacity as readable Signal K output (for dashboards to see current capacity)
+    auto* capacity_sampler = new RepeatSensor<float>(1000, [ah_integ]() { return ah_integ->get_capacity_ah(); });
+    capacity_sampler->connect_to(new SKOutputFloat(capacity_path, "", new SKMetadata("Ah", "Battery Capacity")));
 }

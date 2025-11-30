@@ -30,6 +30,10 @@ class AmpHourIntegrator : public FloatTransform {
   // Get/set efficiency for discharging (current < 0), range 0-100%
   float get_discharge_efficiency() const { return discharge_efficiency_; }
   void set_discharge_efficiency(float pct) { discharge_efficiency_ = constrain(pct, 0.0f, 100.0f); }
+  
+  // Get/set battery capacity in Ah
+  float get_capacity_ah() const { return battery_capacity_ah_; }
+  void set_capacity_ah(float capacity_ah) { battery_capacity_ah_ = constrain(capacity_ah, 0.1f, 10000.0f); }
 
  private:
   void integrate();  // Called by internal 100 Hz timer
