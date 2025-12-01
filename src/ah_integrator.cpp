@@ -48,9 +48,11 @@ AmpHourIntegrator::AmpHourIntegrator(const String& config_path, float initial_ah
 
   // Start a 100 Hz timer for internal integration
   // This ensures high-resolution time sampling even if Signal K updates slower
-  event_loop()->onRepeat(10, [this]() { this->integrate(); });
-  // Start a 1 Hz timer to check whether we should persist the Ah value
-  event_loop()->onRepeat(1000, [this]() { this->maybe_persist_ah(); });
+  // Start a timer for internal integration. Interval defined by AH_INTEGRATION_INTERVAL_MS.
+  event_loop()->onRepeat(AH_INTEGRATION_INTERVAL_MS, [this]() { this->integrate(); });
+  // Start a timer to check whether we should persist the Ah value. Interval defined
+  // by AH_PERSIST_CHECK_INTERVAL_MS (default 0.2 Hz -> every 5 seconds).
+  event_loop()->onRepeat(AH_PERSIST_CHECK_INTERVAL_MS, [this]() { this->maybe_persist_ah(); });
 }
 
 void AmpHourIntegrator::set(const float& new_value) {

@@ -5,6 +5,18 @@
 
 namespace sensesp {
 
+// Interval configuration (can be overridden at compile time)
+// Integration interval in milliseconds (default 1 Hz)
+#ifndef AH_INTEGRATION_INTERVAL_MS
+#define AH_INTEGRATION_INTERVAL_MS 1000
+#endif
+
+// Persist-check interval in milliseconds (default 0.2 Hz -> every 5 seconds)
+#ifndef AH_PERSIST_CHECK_INTERVAL_MS
+#define AH_PERSIST_CHECK_INTERVAL_MS 5000
+#endif
+
+
 // Integrates current (A) over time to produce Amp-hours (Ah).
 // Runs internal integration at 100 Hz for accuracy; exposes Ah to consumers
 // at their own polling rate (e.g., Signal K output).
