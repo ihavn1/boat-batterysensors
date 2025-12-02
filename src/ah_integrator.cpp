@@ -3,11 +3,7 @@
 #include <Preferences.h>
 #include <cmath>
 
-#include "esp_log.h"
-
-
 namespace sensesp {
-  static const char *tag = "DEBUG_AH_INTEG";
 
 AmpHourIntegrator::AmpHourIntegrator(const String& config_path, float initial_ah, float battery_capacity_ah)
     : FloatTransform(config_path), marked_capacity_ah_(battery_capacity_ah),
@@ -61,7 +57,6 @@ AmpHourIntegrator::AmpHourIntegrator(const String& config_path, float initial_ah
 
 void AmpHourIntegrator::set(const float& new_value) {
   // Store the current reading; integration happens in the timer
-  ESP_LOGD(tag, "\n#### %f ##############\n",new_value);
   current_a_ = new_value;
 }
 
@@ -185,8 +180,6 @@ void AmpHourIntegrator::integrate() {
 
   // current_a_ is in amperes. delta Ah = A * hours - use double for small deltas
   double delta_ah = current_a_ * dt_hours;
-
-    ESP_LOGD(tag, "\n#### Delta %.9f ##############\n",delta_ah);
   
   // Apply efficiency factor based on current direction
   // Positive current = charging, Negative current = discharging
@@ -194,8 +187,6 @@ void AmpHourIntegrator::integrate() {
   delta_ah *= efficiency_factor;
   
   ah_output_ += delta_ah;
-
-   ESP_LOGD(tag, "\n#### Output %.6f ##############\n",ah_output_);
   
   // Clamp Ah between 0 and battery capacity
   if (battery_capacity_ah_ > 0) {
