@@ -18,8 +18,8 @@ namespace sensesp {
 
 
 // Integrates current (A) over time to produce Amp-hours (Ah).
-// Runs internal integration at 100 Hz for accuracy; exposes Ah to consumers
-// at their own polling rate (e.g., Signal K output).
+// Runs internal integration at a configurable interval (default 1 Hz via AH_INTEGRATION_INTERVAL_MS).
+// Exposes Ah to consumers at their own polling rate (e.g., Signal K output).
 class AmpHourIntegrator : public FloatTransform {
  public:
   // config_path is unused for now but kept for consistency with other transforms
@@ -29,11 +29,11 @@ class AmpHourIntegrator : public FloatTransform {
 
   void set(const float& new_value) override;
 
-  float get_ah() const { return this->output_; }
+  double get_ah() const { return ah_output_; }
   
   // Set the current Ah value (e.g., from Signal K reset command)
   // Clamped between 0 and battery_capacity_ah
-  void set_ah(float ah);
+  void set_ah(double ah);
   
   // Get/set efficiency for charging (current > 0), range 0-100%
   float get_charge_efficiency() const { return charge_efficiency_; }
@@ -52,9 +52,10 @@ class AmpHourIntegrator : public FloatTransform {
   void set_current_capacity_ah(float capacity_ah);
 
  private:
-  void integrate();  // Called by internal 100 Hz timer
+  void integrate();  // Called by internal timer (interval set by AH_INTEGRATION_INTERVAL_MS)
   unsigned long last_update_ms_ = 0;
-  float current_a_ = 0.0f;  // Most recent current reading (A)
+  double current_a_ = 0.0;  // Most recent current reading (A) - double for precision
+  double ah_output_ = 0.0;  // Accumulated Ah value - double for precision
   float charge_efficiency_ = 100.0f;    // Efficiency % when charging (current > 0)
   float discharge_efficiency_ = 100.0f; // Efficiency % when discharging (current < 0)
   float marked_capacity_ah_ = 0.0f;     // Marked/nameplate capacity in Ah
@@ -64,9 +65,9 @@ class AmpHourIntegrator : public FloatTransform {
   // Ah persistence helpers
   bool ah_dirty_ = false;                    // Whether Ah has changed since last persisted
   unsigned long last_ah_persist_ms_ = 0;     // Timestamp of last Ah persist
-  float last_persisted_ah_ = 0.0f;           // Last persisted Ah value
+  double last_persisted_ah_ = 0.0;           // Last persisted Ah value - double for precision
   unsigned long ah_persist_interval_ms_ = 600000; // Default persist interval (10 minutes)
-  float ah_persist_delta_ = 0.5f;            // Minimum Ah delta to trigger persist
+  double ah_persist_delta_ = 0.5;            // Minimum Ah delta to trigger persist - double for precision
   void maybe_persist_ah();                   // Called periodically to flush Ah to NVS
 };
 

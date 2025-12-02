@@ -3,12 +3,17 @@
 #include <Preferences.h>
 #include <cmath>
 
+#include "esp_log.h"
+
+
 namespace sensesp {
+  static const char *tag = "DEBUG_AH_INTEG";
 
 AmpHourIntegrator::AmpHourIntegrator(const String& config_path, float initial_ah, float battery_capacity_ah)
     : FloatTransform(config_path), marked_capacity_ah_(battery_capacity_ah),
       battery_capacity_ah_(battery_capacity_ah), config_path_(config_path) {
-  this->output_ = initial_ah;
+  ah_output_ = initial_ah;
+  this->output_ = initial_ah;  // Keep FloatTransform output in sync
   last_update_ms_ = millis();
 
   (void)config_path_; (void)initial_ah; (void)battery_capacity_ah;
@@ -37,8 +42,9 @@ AmpHourIntegrator::AmpHourIntegrator(const String& config_path, float initial_ah
       }
       // Load persisted Ah value if present
       if (prefs.isKey((key + "_ah").c_str())) {
-        float v = prefs.getFloat((key + "_ah").c_str(), this->output_);
-        this->output_ = v;
+        float v = prefs.getFloat((key + "_ah").c_str(), (float)ah_output_);
+        ah_output_ = v;
+        this->output_ = v;  // Keep FloatTransform output in sync
       }
       prefs.end();
     } else {
@@ -46,8 +52,6 @@ AmpHourIntegrator::AmpHourIntegrator(const String& config_path, float initial_ah
     }
   }
 
-  // Start a 100 Hz timer for internal integration
-  // This ensures high-resolution time sampling even if Signal K updates slower
   // Start a timer for internal integration. Interval defined by AH_INTEGRATION_INTERVAL_MS.
   event_loop()->onRepeat(AH_INTEGRATION_INTERVAL_MS, [this]() { this->integrate(); });
   // Start a timer to check whether we should persist the Ah value. Interval defined
@@ -56,17 +60,19 @@ AmpHourIntegrator::AmpHourIntegrator(const String& config_path, float initial_ah
 }
 
 void AmpHourIntegrator::set(const float& new_value) {
-  // Store the current reading; integration happens in the 100 Hz timer
+  // Store the current reading; integration happens in the timer
+  ESP_LOGD(tag, "\n#### %f ##############\n",new_value);
   current_a_ = new_value;
 }
 
-void AmpHourIntegrator::set_ah(float ah) {
+void AmpHourIntegrator::set_ah(double ah) {
   // Clamp Ah between 0 and battery capacity
   if (battery_capacity_ah_ > 0) {
-    this->output_ = constrain(ah, 0.0f, battery_capacity_ah_);
+    ah_output_ = constrain(ah, 0.0, (double)battery_capacity_ah_);
   } else {
-    this->output_ = ah;
+    ah_output_ = ah;
   }
+  this->output_ = ah_output_;  // Keep FloatTransform output in sync
   // Mark Ah dirty for periodic persistence (avoid frequent NVS writes)
   ah_dirty_ = true;
 
@@ -76,8 +82,8 @@ void AmpHourIntegrator::set_ah(float ah) {
     key.replace('/', '_');
     Preferences prefs;
     if (prefs.begin("battcfg", false)) {
-      prefs.putFloat((key + "_ah").c_str(), this->output_);
-      last_persisted_ah_ = this->output_;
+      prefs.putFloat((key + "_ah").c_str(), (float)ah_output_);
+      last_persisted_ah_ = ah_output_;
       last_ah_persist_ms_ = millis();
       ah_dirty_ = false; // already persisted
       prefs.end();
@@ -95,7 +101,7 @@ void AmpHourIntegrator::maybe_persist_ah() {
     return;
   }
   // Persist only if delta since last persisted exceeds threshold
-  if (fabs(this->output_ - last_persisted_ah_) < ah_persist_delta_) {
+  if (fabs(ah_output_ - last_persisted_ah_) < ah_persist_delta_) {
     // Not enough change
     ah_dirty_ = false; // clear dirty to avoid repeated checks until next change
     return;
@@ -105,8 +111,8 @@ void AmpHourIntegrator::maybe_persist_ah() {
   key.replace('/', '_');
   Preferences prefs;
     if (prefs.begin("battcfg", false)) {
-      prefs.putFloat((key + "_ah").c_str(), this->output_);
-      last_persisted_ah_ = this->output_;
+      prefs.putFloat((key + "_ah").c_str(), (float)ah_output_);
+      last_persisted_ah_ = ah_output_;
       last_ah_persist_ms_ = now;
       ah_dirty_ = false;
       prefs.end();
@@ -174,29 +180,49 @@ void AmpHourIntegrator::integrate() {
   unsigned long dt_ms = now - last_update_ms_;
   last_update_ms_ = now;
 
-  // Convert milliseconds to hours: ms / 3_600_000
-  float dt_hours = static_cast<float>(dt_ms) / 3600000.0f;
+  // Convert milliseconds to hours: ms / 3_600_000 - use double for precision
+  double dt_hours = static_cast<double>(dt_ms) / 3600000.0;
 
-  // current_a_ is in amperes. delta Ah = A * hours
-  float delta_ah = current_a_ * dt_hours;
+  // current_a_ is in amperes. delta Ah = A * hours - use double for small deltas
+  double delta_ah = current_a_ * dt_hours;
+
+    ESP_LOGD(tag, "\n#### Delta %.9f ##############\n",delta_ah);
   
   // Apply efficiency factor based on current direction
   // Positive current = charging, Negative current = discharging
-  float efficiency_factor = (current_a_ > 0) ? (charge_efficiency_ / 100.0f) : (discharge_efficiency_ / 100.0f);
+  double efficiency_factor = (current_a_ > 0) ? (charge_efficiency_ / 100.0) : (discharge_efficiency_ / 100.0);
   delta_ah *= efficiency_factor;
   
-  this->output_ += delta_ah;
+  ah_output_ += delta_ah;
+
+   ESP_LOGD(tag, "\n#### Output %.6f ##############\n",ah_output_);
   
   // Clamp Ah between 0 and battery capacity
   if (battery_capacity_ah_ > 0) {
-    this->output_ = constrain(this->output_, 0.0f, battery_capacity_ah_);
+    ah_output_ = constrain(ah_output_, 0.0, (double)battery_capacity_ah_);
+  }
+
+  this->output_ = ah_output_;  // Keep FloatTransform output in sync for SK sampling
+
+  // Persist Ah if it changed more than the threshold since last persisted
+  if (fabs(ah_output_ - last_persisted_ah_) >= ah_persist_delta_ && config_path_.length() > 0) {
+    String key = config_path_;
+    key.replace('/', '_');
+    Preferences prefs;
+    if (prefs.begin("battcfg", false)) {
+      prefs.putFloat((key + "_ah").c_str(), (float)ah_output_);
+      last_persisted_ah_ = ah_output_;
+      last_ah_persist_ms_ = now;
+      ah_dirty_ = false;
+      prefs.end();
+    }
   }
 
   // Lightweight debug output (can be disabled in production)
   (void)current_a_; (void)charge_efficiency_; (void)discharge_efficiency_; (void)dt_ms; (void)delta_ah; (void)this->output_;
 
-  // Do NOT emit here; let Signal K output sample Ah at 1 Hz instead
-  // This decouples high-precision integration (100 Hz) from Signal K updates (1 Hz)
+  // Do NOT emit here; let Signal K output sample Ah at its own rate
+  // This decouples integration timer from Signal K update rate
 }
 
 }  // namespace sensesp
