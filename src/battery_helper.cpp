@@ -19,7 +19,7 @@ void setupBatteryINA(INA226& ina, unsigned int read_interval, float shunt_resist
 
 
     ina.configure(shunt_resistance, current_LSB_mA);
-    ina.setAverage(INA226_16_SAMPLES);
+    ina.setAverage(INA226_256_SAMPLES);
 
     auto* voltage_sensor = new RepeatSensor<float>(read_interval, [&ina]() { return ina.getBusVoltage(); });
     voltage_sensor->connect_to(
